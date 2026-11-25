@@ -1,0 +1,14 @@
+﻿work_type_code,work_type_es,work_type_en,target_business_days,is_site_visit
+WT01,Nueva conexión industrial,New industrial connection,15,false
+WT02,Ampliación de conexión,Connection upgrade,12,false
+WT03,Reconexión de servicio,Service reconnection,3,false
+WT04,Mantenimiento preventivo,Preventive maintenance,10,false
+WT05,Reparación de falla,Fault repair,2,false
+WT06,Cambio de medidor,Meter replacement,5,false
+WT07,Revisión de medidor,Meter inspection,5,false
+WT08,Inspección de seguridad,Safety inspection,8,false
+WT09,Prueba de presión,Pressure test,6,false
+WT10,Visita previa a la industria,Pre-installation industry visit,10,true
+WT11,Visita de seguimiento a la industria,Follow-up industry visit,10,true
+WT12,Diseño de redes,Network design,20,false
+WT14,Estudio especial de consumo,Special consumption study,,false
