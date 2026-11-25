@@ -3,9 +3,9 @@
   "name": "kpi_visits_label_p1",
   "position": {
     "x": 1458,
-    "y": 252,
+    "y": 249,
     "z": 7250,
-    "height": 22,
+    "height": 28,
     "width": 380,
     "tabOrder": 1260
   },
@@ -19,7 +19,7 @@
               {
                 "textRuns": [
                   {
-                    "value": "VISITAS A INDUSTRIA (APARTE)",
+                    "value": "VISITAS A INDUSTRIA",
                     "textStyle": {
                       "fontFamily": "'Segoe UI Semibold', wf_segoe-ui_semibold, helvetica, arial, sans-serif",
                       "fontSize": "10pt",
