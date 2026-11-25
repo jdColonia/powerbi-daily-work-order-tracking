@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/pbip/pbipProperties/1.0.0/schema.json",
+  "artifacts": [
+    {
+      "report": {
+        "path": "Daily-Work-Order-Tracking-EN.Report"
+      }
+    }
+  ],
+  "settings": {
+    "enableAutoRecovery": true
+  }
+}

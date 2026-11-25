@@ -1,0 +1,369 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.14.0/schema.json",
+  "name": "consumption_card_p1",
+  "position": {
+    "x": 1172,
+    "y": 1088,
+    "z": 1340,
+    "height": 480,
+    "width": 700,
+    "tabOrder": 1340
+  },
+  "visual": {
+    "visualType": "deneb7E15AEF80B9E4D4F8E12924291ECE89A",
+    "query": {
+      "queryState": {
+        "dataset": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Dim_ConsumptionBand"
+                    }
+                  },
+                  "Property": "ConsumptionBandKey"
+                }
+              },
+              "queryRef": "Dim_ConsumptionBand.ConsumptionBandKey",
+              "nativeQueryRef": "ConsumptionBandKey",
+              "displayName": "Codigo"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Dim_ConsumptionBand"
+                    }
+                  },
+                  "Property": "Consumption Band EN"
+                }
+              },
+              "queryRef": "Dim_ConsumptionBand.Consumption Band EN",
+              "nativeQueryRef": "Consumption Band EN",
+              "displayName": "Rango"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Dim_ConsumptionBand"
+                    }
+                  },
+                  "Property": "Description EN"
+                }
+              },
+              "queryRef": "Dim_ConsumptionBand.Description EN",
+              "nativeQueryRef": "Description EN",
+              "displayName": "Descripcion"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Dim_ConsumptionBand"
+                    }
+                  },
+                  "Property": "Color"
+                }
+              },
+              "queryRef": "Dim_ConsumptionBand.Color",
+              "nativeQueryRef": "Color",
+              "displayName": "Color"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Dim_ConsumptionBand"
+                    }
+                  },
+                  "Property": "Text Color"
+                }
+              },
+              "queryRef": "Dim_ConsumptionBand.Text Color",
+              "nativeQueryRef": "Text Color",
+              "displayName": "ColorTexto"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "_Measures"
+                    }
+                  },
+                  "Property": "Consumption Orders"
+                }
+              },
+              "queryRef": "_Measures.Consumption Orders",
+              "nativeQueryRef": "Consumption Orders",
+              "displayName": "OT"
+            }
+          ]
+        }
+      }
+    },
+    "objects": {
+      "vega": [
+        {
+          "properties": {
+            "provider": {
+              "expr": {
+                "Literal": {
+                  "Value": "'vegaLite'"
+                }
+              }
+            },
+            "jsonSpec": {
+              "expr": {
+                "Literal": {
+                  "Value": "'{\"$schema\":\"https://vega.github.io/schema/vega-lite/v5.json\",\"description\":\"Consumption of the response target: one row per band of Dim_ConsumptionBand; draws the stacked bar and the list with orders and share.\",\"data\":{\"name\":\"dataset\"},\"width\":700,\"height\":480,\"autosize\":{\"type\":\"none\"},\"padding\":0,\"config\":{\"view\":{\"stroke\":null},\"text\":{\"font\":\"Segoe UI\"}},\"transform\":[{\"calculate\":\"isValid(datum.OT) ? datum.OT : 0\",\"as\":\"ot\"},{\"joinaggregate\":[{\"op\":\"sum\",\"field\":\"ot\",\"as\":\"total\"}]},{\"calculate\":\"datum.total > 0 ? datum.ot / datum.total : 0\",\"as\":\"share\"},{\"window\":[{\"op\":\"sum\",\"field\":\"share\",\"as\":\"cum\"}],\"sort\":[{\"field\":\"Codigo\",\"order\":\"ascending\"}]},{\"calculate\":\"24 + 652 * (datum.cum - datum.share)\",\"as\":\"x0\"},{\"calculate\":\"24 + 652 * datum.cum - (datum.share > 0 ? 2 : 0)\",\"as\":\"x1\"},{\"calculate\":\"156 + (datum.Codigo - 1) * 62\",\"as\":\"y\"},{\"calculate\":\"datum.y + 6\",\"as\":\"yPunto\"},{\"calculate\":\"datum.y + 20\",\"as\":\"yPunto2\"},{\"calculate\":\"datum.y + 18\",\"as\":\"yRango\"},{\"calculate\":\"datum.y + 42\",\"as\":\"yDesc\"},{\"calculate\":\"datum.y + 54\",\"as\":\"yLinea\"},{\"calculate\":\"format(datum.share * 100, ''.0f'') + ''%''\",\"as\":\"pctTxt\"}],\"layer\":[{\"data\":{\"values\":[{}]},\"mark\":{\"type\":\"text\",\"align\":\"left\",\"baseline\":\"alphabetic\",\"fontSize\":24,\"fontWeight\":600,\"fill\":\"#0E1014\",\"text\":\"Target used\"},\"encoding\":{\"x\":{\"value\":24},\"y\":{\"value\":42}}},{\"data\":{\"values\":[{}]},\"mark\":{\"type\":\"text\",\"align\":\"left\",\"baseline\":\"alphabetic\",\"fontSize\":16,\"fill\":\"#5F636A\",\"text\":\"How much of the target the open orders have used (excluding industry visits)\"},\"encoding\":{\"x\":{\"value\":24},\"y\":{\"value\":70}}},{\"transform\":[{\"filter\":\"datum.share > 0\"}],\"mark\":{\"type\":\"rect\",\"cornerRadius\":4},\"encoding\":{\"x\":{\"field\":\"x0\",\"type\":\"quantitative\",\"scale\":null},\"x2\":{\"field\":\"x1\"},\"y\":{\"value\":96},\"y2\":{\"value\":132},\"fill\":{\"field\":\"Color\",\"type\":\"nominal\",\"scale\":null}}},{\"mark\":{\"type\":\"rect\",\"cornerRadius\":3},\"encoding\":{\"x\":{\"value\":24},\"x2\":{\"value\":38},\"y\":{\"field\":\"yPunto\",\"type\":\"quantitative\",\"scale\":null},\"y2\":{\"field\":\"yPunto2\"},\"fill\":{\"field\":\"Color\",\"type\":\"nominal\",\"scale\":null}}},{\"mark\":{\"type\":\"text\",\"align\":\"left\",\"baseline\":\"alphabetic\",\"fontSize\":20,\"fontWeight\":600,\"fill\":\"#0E1014\"},\"encoding\":{\"x\":{\"value\":48},\"y\":{\"field\":\"yRango\",\"type\":\"quantitative\",\"scale\":null},\"text\":{\"field\":\"Rango\"}}},{\"mark\":{\"type\":\"text\",\"align\":\"left\",\"baseline\":\"alphabetic\",\"fontSize\":16,\"fill\":\"#5F636A\"},\"encoding\":{\"x\":{\"value\":48},\"y\":{\"field\":\"yDesc\",\"type\":\"quantitative\",\"scale\":null},\"text\":{\"field\":\"Descripcion\"}}},{\"mark\":{\"type\":\"text\",\"align\":\"right\",\"baseline\":\"alphabetic\",\"fontSize\":24,\"fontWeight\":600,\"fill\":\"#0E1014\"},\"encoding\":{\"x\":{\"value\":590},\"y\":{\"field\":\"yRango\",\"type\":\"quantitative\",\"scale\":null},\"text\":{\"field\":\"ot\"}}},{\"mark\":{\"type\":\"text\",\"align\":\"right\",\"baseline\":\"alphabetic\",\"fontSize\":16,\"fill\":\"#5F636A\"},\"encoding\":{\"x\":{\"value\":676},\"y\":{\"field\":\"yRango\",\"type\":\"quantitative\",\"scale\":null},\"text\":{\"field\":\"pctTxt\"}}},{\"transform\":[{\"filter\":\"datum.Codigo < 5\"}],\"mark\":{\"type\":\"rule\",\"stroke\":\"#E4E4E0\",\"strokeWidth\":1},\"encoding\":{\"x\":{\"value\":24},\"x2\":{\"value\":676},\"y\":{\"field\":\"yLinea\",\"type\":\"quantitative\",\"scale\":null}}}]}'"
+                }
+              }
+            },
+            "jsonConfig": {
+              "expr": {
+                "Literal": {
+                  "Value": "'{}'"
+                }
+              }
+            },
+            "renderMode": {
+              "expr": {
+                "Literal": {
+                  "Value": "'svg'"
+                }
+              }
+            },
+            "enableTooltips": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "enableContextMenu": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "enableHighlight": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "enableSelection": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            },
+            "version": {
+              "expr": {
+                "Literal": {
+                  "Value": "'6.4.3'"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "stateManagement": [
+        {
+          "properties": {
+            "viewportHeight": {
+              "expr": {
+                "Literal": {
+                  "Value": "478D"
+                }
+              }
+            },
+            "viewportWidth": {
+              "expr": {
+                "Literal": {
+                  "Value": "698D"
+                }
+              }
+            },
+            "denebMetaVersion": {
+              "expr": {
+                "Literal": {
+                  "Value": "'2'"
+                }
+              }
+            },
+            "consolidateFieldParameters": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "developer": [
+        {
+          "properties": {
+            "version": {
+              "expr": {
+                "Literal": {
+                  "Value": "'2.0.1.0'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "subTitle": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "visualHeader": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "border": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#E4E4E0'"
+                    }
+                  }
+                }
+              }
+            },
+            "radius": {
+              "expr": {
+                "Literal": {
+                  "Value": "8D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "background": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#FFFFFF'"
+                    }
+                  }
+                }
+              }
+            },
+            "transparency": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "padding": [
+        {
+          "properties": {
+            "top": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
+            },
+            "bottom": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
+            },
+            "left": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
+            },
+            "right": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}
