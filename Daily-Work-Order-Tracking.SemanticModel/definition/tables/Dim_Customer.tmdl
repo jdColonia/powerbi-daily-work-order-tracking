@@ -1,0 +1,50 @@
+table Dim_Customer
+	lineageTag: ed5a8a70-be70-5342-9bb7-644e09c8ff7a
+
+	column CustomerKey
+		dataType: string
+		isHidden
+		lineageTag: 64c2518f-cab5-5b9c-86f5-41e63d37ceb6
+		summarizeBy: none
+		sourceColumn: CustomerKey
+
+		annotation SummarizationSetBy = User
+
+	column 'Customer Name ES'
+		dataType: string
+		lineageTag: 27cf091c-8a3e-56bc-8e32-0c55ddeca1a2
+		summarizeBy: none
+		sourceColumn: Customer Name ES
+
+		annotation SummarizationSetBy = User
+
+	column 'Customer Name EN'
+		dataType: string
+		lineageTag: 44d3b333-5e1d-5d94-85a1-e7ee6c92db65
+		summarizeBy: none
+		sourceColumn: Customer Name EN
+
+		annotation SummarizationSetBy = User
+
+	partition Dim_Customer = m
+		mode: import
+		source =
+				let
+				    Source = Table.SelectColumns(OrdersStaging, {"Customer Name"}),
+				    WithKey = Table.AddColumn(Source, "CustomerKey", each fnCustomerKey([Customer Name]), type text),
+				    Grouped = Table.Group(WithKey, {"CustomerKey"}, {
+				        {"Source Name", each List.First(List.RemoveNulls([Customer Name]), null), type nullable text}}),
+				    WithNameES = Table.AddColumn(Grouped, "Customer Name ES",
+				        each if [Source Name] = null then "Sin cliente registrado" else fnReadableName([Source Name]), type text),
+				    WithNameEN = Table.AddColumn(WithNameES, "Customer Name EN",
+				        each if [Source Name] = null then "No customer on record" else fnReadableName([Source Name]), type text),
+				    // Guarantees the "no customer" row even if every order carries a customer
+				    WithNoCustomer = if List.Contains(WithNameEN[CustomerKey], "NO CUSTOMER") then WithNameEN
+				        else Table.Combine({WithNameEN, #table(
+				            type table [CustomerKey = text, #"Source Name" = text, #"Customer Name ES" = text, #"Customer Name EN" = text],
+				            {{"NO CUSTOMER", null, "Sin cliente registrado", "No customer on record"}})}),
+				    Final = Table.SelectColumns(WithNoCustomer, {"CustomerKey", "Customer Name ES", "Customer Name EN"})
+				in
+				    Final
+
+	annotation PBI_ResultType = Table

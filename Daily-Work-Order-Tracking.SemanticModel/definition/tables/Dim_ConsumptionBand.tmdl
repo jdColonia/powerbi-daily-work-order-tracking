@@ -1,0 +1,104 @@
+table Dim_ConsumptionBand
+	lineageTag: 1d6ed033-0d85-5ea3-b82f-ed90a292961a
+
+	column ConsumptionBandKey
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: f4cc864c-9428-5c19-8667-c74a7bd36740
+		summarizeBy: none
+		sourceColumn: ConsumptionBandKey
+
+		annotation SummarizationSetBy = User
+
+	column 'Consumption Band ES'
+		dataType: string
+		lineageTag: 74bf9f73-1e6c-59b3-8c7c-4f3dfde5080b
+		summarizeBy: none
+		sourceColumn: Consumption Band ES
+		sortByColumn: ConsumptionBandKey
+
+		annotation SummarizationSetBy = User
+
+	column 'Consumption Band EN'
+		dataType: string
+		lineageTag: 8adf8562-5e12-5181-912a-0118da4ae30b
+		summarizeBy: none
+		sourceColumn: Consumption Band EN
+		sortByColumn: ConsumptionBandKey
+
+		annotation SummarizationSetBy = User
+
+	column 'Description ES'
+		dataType: string
+		lineageTag: ac8e6ed9-1e2b-5f7e-acef-f3bc9f30d5cc
+		summarizeBy: none
+		sourceColumn: Description ES
+
+		annotation SummarizationSetBy = User
+
+	column 'Description EN'
+		dataType: string
+		lineageTag: 8d06b0b0-d145-5c8f-9945-8ea5cdf0625f
+		summarizeBy: none
+		sourceColumn: Description EN
+
+		annotation SummarizationSetBy = User
+
+	column 'From Pct'
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 0318a946-0c9d-5c24-ac05-f7eebe52709b
+		summarizeBy: none
+		sourceColumn: From Pct
+
+		annotation SummarizationSetBy = User
+
+	column 'To Pct'
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: f52afbcd-6948-585b-94f7-c4f09226e30e
+		summarizeBy: none
+		sourceColumn: To Pct
+
+		annotation SummarizationSetBy = User
+
+	column Color
+		dataType: string
+		isHidden
+		lineageTag: 7dfd40c9-7d49-57d6-a1e1-e078e5d53979
+		summarizeBy: none
+		sourceColumn: Color
+
+		annotation SummarizationSetBy = User
+
+	column 'Text Color'
+		dataType: string
+		isHidden
+		lineageTag: c6ef748a-49c5-53fc-af17-e4e7beab702a
+		summarizeBy: none
+		sourceColumn: Text Color
+
+		annotation SummarizationSetBy = User
+
+	partition Dim_ConsumptionBand = m
+		mode: import
+		source =
+				let
+				    Bands = #table(
+				        type table [ConsumptionBandKey = Int64.Type, #"Consumption Band ES" = text, #"Consumption Band EN" = text,
+				                    #"Description ES" = text, #"Description EN" = text, #"From Pct" = Int64.Type, #"To Pct" = Int64.Type,
+				                    Color = text, #"Text Color" = text],
+				        {
+				            {1, "0–49% del plazo",    "0–49% of the target",    "Con holgura",       "Plenty of time",     0,    49,   "#1A7F4B", "#1A7F4B"},
+				            {2, "50–79% del plazo",   "50–79% of the target",   "A mitad de camino", "Halfway there",      50,   79,   "#2368B5", "#2368B5"},
+				            {3, "80–100% del plazo",  "80–100% of the target",  "En la recta final", "In the final stretch", 80,  100,  "#E3B341", "#B07F0C"},
+				            {4, "Más del 100%",       "Over 100%",              "Plazo superado",    "Target exceeded",    101,  null, "#C62828", "#C62828"},
+				            {5, "Sin medir",          "Not measured",           "Sin fecha de asignación o sin plazo", "No assignment date or no target", null, null, "#9A9DA3", "#9A9DA3"}
+				        })
+				in
+				    Bands
+
+	annotation PBI_ResultType = Table

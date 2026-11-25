@@ -1,0 +1,31 @@
+relationship c7f19180-18c5-55d8-a1b7-14fd9a958a19
+	fromColumn: Fact_Orders.CustomerKey
+	toColumn: Dim_Customer.CustomerKey
+
+relationship 8cb0c553-6ccb-5174-ab1b-e051e47e5da1
+	fromColumn: Fact_Orders.LocationKey
+	toColumn: Dim_Location.LocationKey
+
+relationship d26e9fd1-bfff-502e-98b2-f82fb471f97f
+	fromColumn: Fact_Orders.WorkUnitKey
+	toColumn: Dim_WorkUnit.WorkUnitKey
+
+relationship 08d96d07-cebe-5c8f-8e19-149ce2d2870b
+	fromColumn: Fact_Orders.RequestKey
+	toColumn: Dim_Request.RequestKey
+
+relationship b18cfe23-2c39-5d58-a6bd-8dd821704bac
+	fromColumn: Fact_Orders.SlaStatusKey
+	toColumn: Dim_SlaStatus.SlaStatusKey
+
+relationship bea74f2b-588c-58b0-a8b0-2c63e14dabdb
+	fromColumn: Fact_Orders.ConsumptionBandKey
+	toColumn: Dim_ConsumptionBand.ConsumptionBandKey
+
+relationship 5a7b4355-a593-5e60-996a-3d65a14e6d35
+	fromColumn: Fact_Orders.AgeBandKey
+	toColumn: Dim_AgeBand.AgeBandKey
+
+relationship 4d276a14-03f4-52f4-a720-f88767c7e401
+	fromColumn: Fact_Orders.WorkTypeKey
+	toColumn: Dim_WorkType.WorkTypeKey

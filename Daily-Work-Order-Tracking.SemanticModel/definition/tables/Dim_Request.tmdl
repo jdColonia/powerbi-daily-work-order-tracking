@@ -1,0 +1,77 @@
+table Dim_Request
+	lineageTag: 708732bf-075f-5a4b-a5c0-df361febf869
+
+	column Request
+		dataType: string
+		lineageTag: 1a886c69-9649-5a7b-9147-6106e19ec726
+		summarizeBy: none
+		sourceColumn: Request
+
+		annotation SummarizationSetBy = User
+
+	column RequestKey
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 1f0e7637-5801-5676-9475-dbae00371254
+		summarizeBy: none
+		sourceColumn: RequestKey
+
+		annotation SummarizationSetBy = User
+
+	column 'Request Type ES'
+		dataType: string
+		lineageTag: 7d3b2a8b-30f8-5ed8-adda-5f5696d9e372
+		summarizeBy: none
+		sourceColumn: Request Type ES
+
+		annotation SummarizationSetBy = User
+
+	column 'Request Type EN'
+		dataType: string
+		lineageTag: f860c2dc-4bab-56e2-9be4-e8d9ce75c8a9
+		summarizeBy: none
+		sourceColumn: Request Type EN
+
+		annotation SummarizationSetBy = User
+
+	column 'Request Observation Lines ES'
+		dataType: string
+		isHidden
+		lineageTag: 8d0bdcbc-c24c-5b78-b0e0-4ec9880f0880
+		summarizeBy: none
+		sourceColumn: Request Observation Lines ES
+
+		annotation SummarizationSetBy = User
+
+	column 'Request Observation Lines EN'
+		dataType: string
+		isHidden
+		lineageTag: e7e2e468-c424-53c5-b781-956990475bed
+		summarizeBy: none
+		sourceColumn: Request Observation Lines EN
+
+		annotation SummarizationSetBy = User
+
+	partition Dim_Request = m
+		mode: import
+		source =
+				let
+				    Source = Table.SelectRows(OrdersStaging, each [Request ID] <> null),
+				    Grouped = Table.Group(Source, {"Request ID"}, {
+				        {"Request Type ES", each List.First(List.RemoveNulls([Request Description ES]), "Sin tipo de solicitud"), type text},
+				        {"Request Type EN", each List.First(List.RemoveNulls([Request Description EN]), "No request type"), type text},
+				        {"Request Observation Lines ES", each fnWrapLines(List.First(List.RemoveNulls([Request Observation ES]), null), 82, 8), type nullable text},
+				        {"Request Observation Lines EN", each fnWrapLines(List.First(List.RemoveNulls([Request Observation EN]), null), 82, 8), type nullable text}}),
+				    Renamed = Table.RenameColumns(Grouped, {{"Request ID", "RequestKey"}}),
+				    NoRequest = #table(
+				        type table [RequestKey = Int64.Type, #"Request Type ES" = text, #"Request Type EN" = text,
+				                    #"Request Observation Lines ES" = text, #"Request Observation Lines EN" = text],
+				        {{-1, "Sin solicitud", "No request", null, null}}),
+				    Combined = Table.Combine({Renamed, NoRequest}),
+				    WithText = Table.AddColumn(Combined, "Request", each if [RequestKey] = -1 then "—" else Text.From([RequestKey]), type text),
+				    Final = Table.TransformColumnTypes(WithText, {{"RequestKey", Int64.Type}})
+				in
+				    Final
+
+	annotation PBI_ResultType = Table

@@ -1,0 +1,296 @@
+table Fact_Orders
+	lineageTag: 2100d5ce-2143-52c4-b5a1-75463bbe15aa
+
+	/// Work order number.
+	column 'Order Number'
+		dataType: int64
+		formatString: 0
+		lineageTag: a11098b6-6086-54d0-885d-8b8b14a0d47d
+		summarizeBy: none
+		sourceColumn: Order Number
+
+		annotation SummarizationSetBy = User
+
+	/// Request number; -1 when the order has no request.
+	column RequestKey
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: f9102177-4166-5002-8a6c-e1bedb9fb262
+		summarizeBy: none
+		sourceColumn: RequestKey
+
+		annotation SummarizationSetBy = User
+
+	column LocationKey
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 8bcf9ee9-fa56-5403-8d02-6a89bc3b12b2
+		summarizeBy: none
+		sourceColumn: LocationKey
+
+		annotation SummarizationSetBy = User
+
+	column WorkUnitKey
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: abb8678c-6ed7-5006-96ad-11a77cba0002
+		summarizeBy: none
+		sourceColumn: WorkUnitKey
+
+		annotation SummarizationSetBy = User
+
+	column CustomerKey
+		dataType: string
+		isHidden
+		lineageTag: 07096c78-2652-5f9d-8c39-039ab7645b15
+		summarizeBy: none
+		sourceColumn: CustomerKey
+
+		annotation SummarizationSetBy = User
+
+	/// Traffic light code x 10 + 1 when the order is a site visit.
+	column SlaStatusKey
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 02ae3ded-eb82-5c2a-83d9-0e0013803907
+		summarizeBy: none
+		sourceColumn: SlaStatusKey
+
+		annotation SummarizationSetBy = User
+
+	column ConsumptionBandKey
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: d97ea85e-da65-5b14-bc4e-9ccb905e3821
+		summarizeBy: none
+		sourceColumn: ConsumptionBandKey
+
+		annotation SummarizationSetBy = User
+
+	column AgeBandKey
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: a23a704a-354c-5b83-bc2d-af85f4321019
+		summarizeBy: none
+		sourceColumn: AgeBandKey
+
+		annotation SummarizationSetBy = User
+
+	column 'Created Date'
+		dataType: dateTime
+		formatString: Short Date
+		lineageTag: 16ffec75-0eb3-5109-8451-a1f7aa80161d
+		summarizeBy: none
+		sourceColumn: Created Date
+
+		annotation SummarizationSetBy = User
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	/// Day the order was assigned to the crew; it counts as day 1 of the target.
+	column 'Assignment Date'
+		dataType: dateTime
+		formatString: Short Date
+		lineageTag: b3c02921-ac1e-5d2a-af3c-2efecd423a4c
+		summarizeBy: none
+		sourceColumn: Assignment Date
+
+		annotation SummarizationSetBy = User
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	/// Last business day to meet the response target.
+	column 'Due Date'
+		dataType: dateTime
+		formatString: Short Date
+		lineageTag: b5226511-72d8-5445-b14e-ce0be8576b69
+		summarizeBy: none
+		sourceColumn: Due Date
+
+		annotation SummarizationSetBy = User
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	/// Response target of the work type, in business days.
+	column 'Target Business Days'
+		dataType: int64
+		formatString: 0
+		lineageTag: 1c2f6db8-3743-594c-b9a8-3cb8e70e9bb8
+		summarizeBy: none
+		sourceColumn: Target Business Days
+
+		annotation SummarizationSetBy = User
+
+	/// Business days elapsed since the assignment day (included) up to the snapshot date.
+	column 'Business Days Used'
+		dataType: int64
+		formatString: 0
+		lineageTag: a76ac043-6c3d-57ad-a163-46187feb2f38
+		summarizeBy: none
+		sourceColumn: Business Days Used
+
+		annotation SummarizationSetBy = User
+
+	/// Target minus business days used; negative when overdue.
+	column 'Days Remaining'
+		dataType: int64
+		formatString: 0
+		lineageTag: f505a0de-afbd-57bf-a379-6330d542a819
+		summarizeBy: none
+		sourceColumn: Days Remaining
+
+		annotation SummarizationSetBy = User
+
+	/// Business days used divided by the target.
+	column 'Target Consumption'
+		dataType: double
+		formatString: 0%
+		lineageTag: 5145399d-a2d7-5960-b733-9ba866f74970
+		summarizeBy: none
+		sourceColumn: Target Consumption
+
+		annotation SummarizationSetBy = User
+
+	/// Order, request and customer text used by the search box.
+	column 'Search Text'
+		dataType: string
+		lineageTag: eaf08fb5-5df3-5883-a7b2-b531c3517067
+		summarizeBy: none
+		sourceColumn: Search Text
+
+		annotation SummarizationSetBy = User
+
+	/// Order comment (Spanish) wrapped in lines for the tooltip card.
+	column 'Comment Lines ES'
+		dataType: string
+		isHidden
+		lineageTag: 8cdb4bfe-7269-558f-bb71-35118774acfd
+		summarizeBy: none
+		sourceColumn: Comment Lines ES
+
+		annotation SummarizationSetBy = User
+
+	/// Order comment (English) wrapped in lines for the tooltip card.
+	column 'Comment Lines EN'
+		dataType: string
+		isHidden
+		lineageTag: 90e587f7-51e4-5edc-ab66-b00350bc7fce
+		summarizeBy: none
+		sourceColumn: Comment Lines EN
+
+		annotation SummarizationSetBy = User
+
+	column WorkTypeKey
+		dataType: string
+		isHidden
+		lineageTag: 9a7f2fd3-d2fb-599f-9f18-03223769b5ca
+		summarizeBy: none
+		sourceColumn: WorkTypeKey
+
+		annotation SummarizationSetBy = User
+
+	partition Fact_Orders = m
+		mode: import
+		source =
+				let
+				    Cutoff = Date.From(SnapshotDate),
+				    Cal = BusinessCalendar,
+				    Keys = List.Transform(Cal[Date], each Date.ToText(_, [Format = "yyyy-MM-dd"])),
+				    Index = Record.FromList(Cal[BusinessIndex], Keys),
+				    IsBusiness = Record.FromList(Cal[IsBusinessDay], Keys),
+				    BusinessDays = List.Buffer(Table.SelectRows(Cal, each [IsBusinessDay])[Date]),
+				    fnIndex = (d as date) as number => Record.Field(Index, Date.ToText(d, [Format = "yyyy-MM-dd"])),
+				    // Business days BEFORE the assignment: the clock starts on the assignment day (day 1)
+				    fnBefore = (d as date) as number =>
+				        fnIndex(d) - (if Record.Field(IsBusiness, Date.ToText(d, [Format = "yyyy-MM-dd"])) then 1 else 0),
+				    CutoffIndex = fnIndex(Cutoff),
+				
+				    Types = Table.Buffer(Table.SelectColumns(Dim_WorkType, {"WorkTypeKey", "Target Business Days", "Is Site Visit"})),
+				    ConsumptionBands = Table.Buffer(Table.SelectRows(Dim_ConsumptionBand, each [From Pct] <> null)),
+				    AgeBands = Table.Buffer(Table.SelectRows(Dim_AgeBand, each [From Days] <> null)),
+				    fnBand = (bands as table, value as number, fromCol as text, toCol as text, keyCol as text) as nullable number =>
+				        let row = List.First(Table.ToRecords(Table.SelectRows(bands,
+				                each value >= Record.Field(_, fromCol) and (Record.Field(_, toCol) = null or value <= Record.Field(_, toCol)))), null)
+				        in if row = null then null else Record.Field(row, keyCol),
+				
+				    Joined = Table.NestedJoin(OrdersStaging, {"Order Type"}, Types, {"WorkTypeKey"}, "T", JoinKind.LeftOuter),
+				    WithType = Table.ExpandTableColumn(Joined, "T", {"Target Business Days", "Is Site Visit"}),
+				
+				    WithDaysUsed = Table.AddColumn(WithType, "Business Days Used",
+				        each if [Order Assigned At] = null then null
+				             else List.Max({0, CutoffIndex - fnBefore([Order Assigned At])}), Int64.Type),
+				    WithRemaining = Table.AddColumn(WithDaysUsed, "Days Remaining",
+				        each if [Target Business Days] = null or [Business Days Used] = null then null
+				             else [Target Business Days] - [Business Days Used], Int64.Type),
+				    WithDueDate = Table.AddColumn(WithRemaining, "Due Date",
+				        each if [Target Business Days] = null or [Order Assigned At] = null then null
+				             else BusinessDays{fnBefore([Order Assigned At]) + [Target Business Days] - 1}, type date),
+				    WithConsumption = Table.AddColumn(WithDueDate, "Target Consumption",
+				        each if [Target Business Days] = null or [Target Business Days] = 0 or [Business Days Used] = null then null
+				             else [Business Days Used] / [Target Business Days], type number),
+				
+				    WithTrafficLight = Table.AddColumn(WithConsumption, "_TrafficLight",
+				        each if [Order Assigned At] = null then 0
+				             else if [Target Business Days] = null then 4
+				             else if [Days Remaining] < 0 then 3
+				             else if [Days Remaining] <= 1 then 2
+				             else 1, Int64.Type),
+				    WithStatus = Table.AddColumn(WithTrafficLight, "SlaStatusKey",
+				        each [_TrafficLight] * 10 + (if [Is Site Visit] = true then 1 else 0), Int64.Type),
+				    WithConsumptionBand = Table.AddColumn(WithStatus, "ConsumptionBandKey",
+				        each if [Target Consumption] = null then 5
+				             else fnBand(ConsumptionBands, Number.RoundDown([Target Consumption] * 100), "From Pct", "To Pct", "ConsumptionBandKey"), Int64.Type),
+				    WithAgeBand = Table.AddColumn(WithConsumptionBand, "AgeBandKey",
+				        each if [Business Days Used] = null then 6
+				             else fnBand(AgeBands, [Business Days Used], "From Days", "To Days", "AgeBandKey"), Int64.Type),
+				
+				    WithCustomer = Table.AddColumn(WithAgeBand, "CustomerKey", each fnCustomerKey([Customer Name]), type text),
+				    fnNoAccents = (t as nullable text) as nullable text =>
+				        if t = null then null
+				        else Text.Lower(List.Accumulate(
+				            {{"á", "a"}, {"é", "e"}, {"í", "i"}, {"ó", "o"}, {"ú", "u"}, {"ü", "u"},
+				             {"Á", "a"}, {"É", "e"}, {"Í", "i"}, {"Ó", "o"}, {"Ú", "u"}, {"Ü", "u"}},
+				            t, (s, p) => Text.Replace(s, p{0}, p{1}))),
+				    WithSearch = Table.AddColumn(WithCustomer, "Search Text",
+				        each Text.Combine(List.RemoveNulls({
+				            Text.From([Order ID]),
+				            if [Request ID] = null then null else Text.From([Request ID]),
+				            [Customer Name],
+				            fnNoAccents([Customer Name])
+				        }), " | "), type text),
+				
+				    WithCommentES = Table.AddColumn(WithSearch, "Comment Lines ES",
+				        each fnWrapLines([Order Comment ES], 82, 14), type nullable text),
+				    WithCommentEN = Table.AddColumn(WithCommentES, "Comment Lines EN",
+				        each fnWrapLines([Order Comment EN], 82, 14), type nullable text),
+				
+				    WithKeys = Table.TransformColumns(WithCommentEN, {
+				        {"Request ID", each if _ = null then -1 else _, Int64.Type},
+				        {"Location Code", each if _ = null then -1 else _, Int64.Type},
+				        {"Work Unit Code", each if _ = null then -1 else _, Int64.Type}
+				    }),
+				    Renamed = Table.RenameColumns(WithKeys, {
+				        {"Order ID", "Order Number"}, {"Request ID", "RequestKey"}, {"Order Type", "WorkTypeKey"},
+				        {"Location Code", "LocationKey"},
+				        {"Work Unit Code", "WorkUnitKey"},
+				        {"Order Created At", "Created Date"}, {"Order Assigned At", "Assignment Date"}
+				    }),
+				    Final = Table.SelectColumns(Renamed, {
+				        "Order Number", "RequestKey", "WorkTypeKey", "LocationKey",
+				        "WorkUnitKey", "CustomerKey", "SlaStatusKey", "ConsumptionBandKey", "AgeBandKey",
+				        "Created Date", "Assignment Date", "Due Date", "Target Business Days", "Business Days Used",
+				        "Days Remaining", "Target Consumption", "Search Text", "Comment Lines ES", "Comment Lines EN"
+				    }),
+				    Typed = Table.TransformColumnTypes(Final, {
+				        {"Order Number", Int64.Type}, {"WorkTypeKey", type text}, {"Created Date", type date},
+				        {"Assignment Date", type date}, {"Target Business Days", Int64.Type}})
+				in
+				    Typed
+
+	annotation PBI_ResultType = Table

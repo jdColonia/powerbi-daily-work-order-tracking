@@ -1,0 +1,46 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-US
+	valueFilterBehavior: independent
+	dataAccessOptions
+		fastCombine
+		legacyRedirects
+		returnErrorValuesAsNull
+
+queryGroup '1. Parameters'
+
+	annotation PBI_QueryGroupOrder = 0
+
+queryGroup '2. Functions'
+
+	annotation PBI_QueryGroupOrder = 1
+
+queryGroup '3. Staging'
+
+	annotation PBI_QueryGroupOrder = 2
+
+queryGroup '4. Support'
+
+	annotation PBI_QueryGroupOrder = 3
+
+annotation __PBI_TimeIntelligenceEnabled = 0
+
+annotation PBI_ProTooling = ["DevMode","MCP-PBIModeling"]
+
+annotation PBI_QueryOrder = ["DataRoot", "fnReadFile", "fnReadableName", "fnCustomerKey", "fnWrapLines", "OrdersSource", "OrdersStaging", "WorkTypeConfig", "SnapshotDate", "BusinessCalendar", "Dim_WorkType", "Dim_Customer", "Dim_Location", "Dim_WorkUnit", "Dim_Request", "Dim_SlaStatus", "Dim_ConsumptionBand", "Dim_AgeBand", "Info_Refresh", "Fact_Orders", "Language", "_Measures"]
+
+ref table Dim_Location
+ref table Dim_Request
+ref table _Measures
+ref table Fact_Orders
+ref table Dim_Customer
+ref table Dim_WorkUnit
+ref table Dim_SlaStatus
+ref table Dim_ConsumptionBand
+ref table Dim_AgeBand
+ref table Info_Refresh
+ref table Dim_WorkType
+ref table Language
+
+ref cultureInfo en-US

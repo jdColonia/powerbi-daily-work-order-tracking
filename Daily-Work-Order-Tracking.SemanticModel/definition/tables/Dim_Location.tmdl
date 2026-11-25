@@ -1,0 +1,51 @@
+table Dim_Location
+	lineageTag: ceb1ea76-9e77-5f63-9a2b-7073af5b249a
+
+	column 'Location ES'
+		dataType: string
+		lineageTag: 74fbccfa-1144-553e-91da-d430accccff2
+		summarizeBy: none
+		sourceColumn: Location ES
+
+		annotation SummarizationSetBy = User
+
+	column 'Location EN'
+		dataType: string
+		lineageTag: 12ed726e-37a0-5093-a650-e881549995e7
+		summarizeBy: none
+		sourceColumn: Location EN
+
+		annotation SummarizationSetBy = User
+
+	column LocationKey
+		dataType: int64
+		formatString: 0
+		lineageTag: 3ea9a4f0-9495-568f-b67d-b005a06affc3
+		summarizeBy: none
+		sourceColumn: LocationKey
+
+		annotation SummarizationSetBy = User
+
+	partition Dim_Location = m
+		mode: import
+		source =
+				let
+				    Source = Table.SelectRows(OrdersStaging, each [Location Code] <> null),
+				    Grouped = Table.Group(Source, {"Location Code"}, {
+				        {"Source Description", each List.First(List.RemoveNulls([Location Name]), null), type nullable text}}),
+				    Renamed = Table.RenameColumns(Grouped, {{"Location Code", "LocationKey"}}),
+				    NoLocation = #table(type table [LocationKey = Int64.Type, #"Source Description" = text], {{-1, null}}),
+				    All = Table.Combine({Renamed, NoLocation}),
+				    WithNameES = Table.AddColumn(All, "Location ES",
+				        each if [LocationKey] = -1 then "Sin ubicación"
+				             else if [Source Description] = null then "Ubicación " & Text.From([LocationKey])
+				             else fnReadableName([Source Description]), type text),
+				    WithNameEN = Table.AddColumn(WithNameES, "Location EN",
+				        each if [LocationKey] = -1 then "No location"
+				             else if [Source Description] = null then "Location " & Text.From([LocationKey])
+				             else fnReadableName([Source Description]), type text),
+				    Final = Table.TransformColumnTypes(Table.RemoveColumns(WithNameEN, {"Source Description"}), {{"LocationKey", Int64.Type}})
+				in
+				    Final
+
+	annotation PBI_ResultType = Table

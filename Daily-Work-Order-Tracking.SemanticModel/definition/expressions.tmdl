@@ -1,0 +1,293 @@
+expression DataRoot = "https://raw.githubusercontent.com/jdColonia/powerbi-daily-work-order-tracking/main/data/" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: b22e242f-836a-53f3-925a-50aa16394ffa
+	queryGroup: '1. Parameters'
+
+	annotation PBI_ResultType = Text
+
+expression fnReadFile =
+		(fileName as text) as binary =>
+		    if Text.StartsWith(DataRoot, "http")
+		    then Web.Contents(DataRoot, [RelativePath = fileName])
+		    else File.Contents(DataRoot & fileName)
+	lineageTag: f0a61772-8017-538c-9dc6-0b1c4fde161d
+	queryGroup: '2. Functions'
+
+	annotation PBI_ResultType = Function
+
+expression fnReadableName =
+		(text as nullable text) as nullable text =>
+		    if text = null then null
+		    else
+		        let
+		            Clean = Text.Combine(List.Select(Text.Split(Text.Trim(text), " "), each _ <> ""), " "),
+		            NoParenthesisSpaces = Text.Replace(Text.Replace(Clean, "( ", "("), " )", ")"),
+		            Proper = Text.Proper(NoParenthesisSpaces),
+		            // Articles (La, El, Los...) stay capitalised: they are part of proper names such as "La Esperanza".
+		            Connectors = {"De", "Del", "Y", "O", "Para", "Por", "En", "A", "Con"},
+		            Words = Text.Split(Proper, " "),
+		            Adjusted = List.Transform(
+		                List.Positions(Words),
+		                (i) => if i > 0 and List.Contains(Connectors, Words{i}) then Text.Lower(Words{i}) else Words{i}),
+		            Acronyms = List.Transform(Adjusted, each if List.Contains({"Sas", "Ltda"}, _) then Text.Upper(_) else _)
+		        in
+		            Text.Combine(Acronyms, " ")
+	lineageTag: 436231bd-9a0d-5746-80e2-7f4fdc8f3fb7
+	queryGroup: '2. Functions'
+
+	annotation PBI_ResultType = Function
+
+expression fnCustomerKey =
+		(name as nullable text) as text =>
+		    let
+		        t = if name = null then "" else Text.Upper(Text.Trim(name)),
+		        NoAccents = List.Accumulate({{"Á", "A"}, {"É", "E"}, {"Í", "I"}, {"Ó", "O"}, {"Ú", "U"}, {"Ü", "U"}},
+		            t, (s, p) => Text.Replace(s, p{0}, p{1})),
+		        NoPunctuation = List.Accumulate({".", ",", ";", "-", "(", ")"}, NoAccents, (s, c) => Text.Replace(s, c, " ")),
+		        Clean = Text.Combine(List.Select(Text.Split(NoPunctuation, " "), each _ <> ""), " ")
+		    in
+		        if Clean = "" then "NO CUSTOMER" else Clean
+	lineageTag: e81cf975-2185-5c8b-9208-ee2216a83ff5
+	queryGroup: '2. Functions'
+
+	annotation PBI_ResultType = Function
+
+expression fnWrapLines =
+		(text as nullable text, width as number, maxLines as number) as nullable text =>
+		    if text = null then null
+		    else
+		        let
+		            Flat = Text.Replace(Text.Replace(Text.Replace(text, "#(cr)", " "), "#(lf)", " "), "#(tab)", " "),
+		            Words = List.Select(Text.Split(Flat, " "), each _ <> ""),
+		            // Words longer than the line are cut into pieces of `width`
+		            Pieces = List.Combine(List.Transform(Words, each
+		                if Text.Length(_) <= width then {_}
+		                else List.Transform(List.Numbers(0, Number.RoundUp(Text.Length(_) / width), width), (i) => Text.Middle(_, i, width)))),
+		            Lines = List.Accumulate(Pieces, {}, (acc, p) =>
+		                if List.IsEmpty(acc) then {p}
+		                else
+		                    let last = List.Last(acc)
+		                    in if Text.Length(last) + 1 + Text.Length(p) <= width
+		                       then List.RemoveLastN(acc, 1) & {last & " " & p}
+		                       else acc & {p}),
+		            Trimmed =
+		                if List.Count(Lines) <= maxLines then Lines
+		                else List.FirstN(Lines, maxLines - 1) & {Text.Start(Lines{maxLines - 1}, width - 2) & " …"}
+		        in
+		            if List.IsEmpty(Lines) then null else Text.Combine(Trimmed, "#(lf)")
+	lineageTag: f19d68b0-b60b-5ab7-9886-536311ea9023
+	queryGroup: '2. Functions'
+
+	annotation PBI_ResultType = Function
+
+expression OrdersSource =
+		let
+		    Source = Csv.Document(fnReadFile("orders.csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+		    Headers = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+		
+		    Expected = {
+		        "Request ID", "Request Description ES", "Request Description EN", "Request Observation ES", "Request Observation EN",
+		        "Order ID", "Order Type", "Order Comment ES", "Order Comment EN",
+		        "Order Created At", "Order Assigned At",
+		        "Customer Name", "Location Code", "Location Name", "Work Unit Code", "Work Unit Name"
+		    },
+		    MissingColumns = List.Difference(Expected, Table.ColumnNames(Headers)),
+		    Complete = List.Accumulate(MissingColumns, Headers, (t, c) => Table.AddColumn(t, c, each null)),
+		    Selected = Table.SelectColumns(Complete, Expected),
+		
+		    fnText = (v) as nullable text =>
+		        let t = if v = null then null else Text.Trim(Text.From(v))
+		        in if t = null or t = "" then null else t,
+		
+		    fnInteger = (v) as nullable number =>
+		        if v = null then null
+		        else if v is number then Int64.From(v)
+		        else
+		            let t = fnText(v)
+		            in if t = null then null else try Int64.From(Number.FromText(t, "en-US")) otherwise null,
+		
+		    fnDate = (v) as nullable date =>
+		        if v = null then null
+		        else if v is date then v
+		        else if v is datetime then Date.From(v)
+		        else
+		            let t = fnText(v)
+		            in
+		                if t = null then null
+		                else try Date.FromText(Text.Start(t, 10), [Format = "yyyy-MM-dd", Culture = "en-US"])
+		                    otherwise null,
+		
+		    Typed = Table.TransformColumns(Selected, {
+		        {"Request ID", fnInteger, Int64.Type},
+		        {"Order ID", fnInteger, Int64.Type},
+		        {"Location Code", fnInteger, Int64.Type},
+		        {"Work Unit Code", fnInteger, Int64.Type},
+		        {"Order Created At", fnDate, type date},
+		        {"Order Assigned At", fnDate, type date},
+		        {"Order Type", fnText, type text},
+		        {"Request Description ES", fnText, type text},
+		        {"Request Description EN", fnText, type text},
+		        {"Request Observation ES", fnText, type text},
+		        {"Request Observation EN", fnText, type text},
+		        {"Order Comment ES", fnText, type text},
+		        {"Order Comment EN", fnText, type text},
+		        {"Customer Name", fnText, type text},
+		        {"Location Name", fnText, type text},
+		        {"Work Unit Name", fnText, type text}
+		    })
+		in
+		    Table.Buffer(Typed)
+	lineageTag: 9ba2b54b-2849-53b6-8d9f-108c3820e56b
+	queryGroup: '3. Staging'
+
+	annotation PBI_ResultType = Table
+
+expression OrdersStaging =
+		let
+		    Rows = OrdersSource,
+		    WithOrder = Table.SelectRows(Rows, each [Order ID] <> null),
+		    Deduplicated = Table.Distinct(WithOrder, {"Order ID"})
+		in
+		    Deduplicated
+	lineageTag: baca6020-8ff8-572b-9e42-12387bbe696a
+	queryGroup: '3. Staging'
+
+	annotation PBI_ResultType = Table
+
+expression WorkTypeConfig =
+		let
+		    VisitCodes = {"WT10", "WT11"},
+		
+		    Source = Csv.Document(fnReadFile("config_work_types.csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+		    Data = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+		
+		    fnInteger = (v) as nullable number =>
+		        if v = null then null
+		        else if v is number then Int64.From(v)
+		        else try Int64.From(Number.FromText(Text.Trim(Text.From(v)), "en-US")) otherwise null,
+		    // Trim and keep a single space between words
+		    fnText = (v) as nullable text =>
+		        let t = if v = null then null else Text.Combine(List.Select(Text.Split(Text.Trim(Text.From(v)), " "), each _ <> ""), " ")
+		        in if t = null or t = "" then null else t,
+		    fnYes = (v) as nullable logical =>
+		        if v = null then null
+		        else List.Contains({"yes", "true", "1", "x"}, Text.Lower(Text.Trim(Text.From(v)))),
+		
+		    Columns = Table.SelectColumns(Data,
+		        {"work_type_code", "work_type_es", "work_type_en",
+		         "target_business_days", "is_site_visit"}, MissingField.UseNull),
+		    Renamed = Table.RenameColumns(Columns, {
+		        {"work_type_code", "WorkTypeKey"}, {"work_type_es", "Work Type ES"}, {"work_type_en", "Work Type EN"},
+		        {"target_business_days", "Target Business Days"}, {"is_site_visit", "_IsSiteVisit"}}),
+		    Typed = Table.TransformColumns(Renamed, {
+		        {"WorkTypeKey", fnText, type nullable text},
+		        {"Work Type ES", fnText, type nullable text},
+		        {"Work Type EN", fnText, type nullable text},
+		        {"Target Business Days", fnInteger, Int64.Type},
+		        {"_IsSiteVisit", fnYes, type nullable logical}
+		    }),
+		    WithVisit = Table.AddColumn(Typed, "Is Site Visit",
+		        each if [_IsSiteVisit] <> null then [_IsSiteVisit] else List.Contains(VisitCodes, [WorkTypeKey]), type logical),
+		    WithCode = Table.SelectRows(Table.RemoveColumns(WithVisit, {"_IsSiteVisit"}), each [WorkTypeKey] <> null),
+		    Final = Table.Distinct(WithCode, {"WorkTypeKey"})
+		in
+		    Final
+	lineageTag: 5c37585c-64f6-5de9-8251-420d20e23957
+	queryGroup: '3. Staging'
+
+	annotation PBI_ResultType = Table
+
+expression SnapshotDate =
+		let
+		    Source = Csv.Document(fnReadFile("snapshot.csv"), [Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]),
+		    Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+		    Result = Date.FromText(Text.Trim(Promoted{0}[snapshot_date]), [Format = "yyyy-MM-dd", Culture = "en-US"])
+		in
+		    Result
+	lineageTag: a30baf50-9b13-5c5f-8308-42c00a62780e
+	queryGroup: '4. Support'
+
+	annotation PBI_ResultType = Date
+
+expression BusinessCalendar =
+		let
+		    Cutoff = Date.From(SnapshotDate),
+		    DataDates = List.RemoveNulls(OrdersStaging[Order Assigned At] & OrdersStaging[Order Created At]),
+		    StartDate = Date.StartOfYear(List.Min(DataDates & {Cutoff})),
+		    EndDate = Date.EndOfYear(Date.AddDays(Cutoff, 400)),
+		
+		    AdditionalNonWorkingDays = {
+		        // [Date = #date(2026, 12, 24), NameES = "Día no laboral de la empresa", NameEN = "Company non-working day"]
+		    },
+		
+		    fnEaster = (y as number) as date =>
+		        let
+		            a = Number.Mod(y, 19), b = Number.IntegerDivide(y, 100), c = Number.Mod(y, 100),
+		            d = Number.IntegerDivide(b, 4), e = Number.Mod(b, 4), f = Number.IntegerDivide(b + 8, 25),
+		            g = Number.IntegerDivide(b - f + 1, 3), h = Number.Mod(19 * a + b - d - g + 15, 30),
+		            i = Number.IntegerDivide(c, 4), k = Number.Mod(c, 4), l = Number.Mod(32 + 2 * e + 2 * i - h - k, 7),
+		            m = Number.IntegerDivide(a + 11 * h + 22 * l, 451),
+		            month = Number.IntegerDivide(h + l - 7 * m + 114, 31),
+		            day = Number.Mod(h + l - 7 * m + 114, 31) + 1
+		        in
+		            #date(y, month, day),
+		
+		    // Colombian holidays moved to the next Monday
+		    fnMonday = (d as date) as date => Date.AddDays(d, Number.Mod(7 - Date.DayOfWeek(d, Day.Monday), 7)),
+		
+		    fnHolidaysOfYear = (y as number) as list =>
+		        let p = fnEaster(y)
+		        in {
+		            [Date = #date(y, 1, 1), NameES = "Año Nuevo", NameEN = "New Year's Day"],
+		            [Date = fnMonday(#date(y, 1, 6)), NameES = "Reyes Magos", NameEN = "Epiphany"],
+		            [Date = fnMonday(#date(y, 3, 19)), NameES = "San José", NameEN = "Saint Joseph's Day"],
+		            [Date = Date.AddDays(p, -3), NameES = "Jueves Santo", NameEN = "Maundy Thursday"],
+		            [Date = Date.AddDays(p, -2), NameES = "Viernes Santo", NameEN = "Good Friday"],
+		            [Date = #date(y, 5, 1), NameES = "Día del Trabajo", NameEN = "Labor Day"],
+		            [Date = Date.AddDays(p, 43), NameES = "Ascensión", NameEN = "Ascension Day"],
+		            [Date = Date.AddDays(p, 64), NameES = "Corpus Christi", NameEN = "Corpus Christi"],
+		            [Date = Date.AddDays(p, 71), NameES = "Sagrado Corazón", NameEN = "Sacred Heart"],
+		            [Date = fnMonday(#date(y, 6, 29)), NameES = "San Pedro y San Pablo", NameEN = "Saints Peter and Paul"],
+		            [Date = #date(y, 7, 20), NameES = "Día de la Independencia", NameEN = "Independence Day"],
+		            [Date = #date(y, 8, 7), NameES = "Batalla de Boyacá", NameEN = "Battle of Boyacá"],
+		            [Date = fnMonday(#date(y, 8, 15)), NameES = "Asunción de la Virgen", NameEN = "Assumption of Mary"],
+		            [Date = fnMonday(#date(y, 10, 12)), NameES = "Día de la Raza", NameEN = "Columbus Day"],
+		            [Date = fnMonday(#date(y, 11, 1)), NameES = "Todos los Santos", NameEN = "All Saints' Day"],
+		            [Date = fnMonday(#date(y, 11, 11)), NameES = "Independencia de Cartagena", NameEN = "Independence of Cartagena"],
+		            [Date = #date(y, 12, 8), NameES = "Inmaculada Concepción", NameEN = "Immaculate Conception"],
+		            [Date = #date(y, 12, 25), NameES = "Navidad", NameEN = "Christmas Day"]
+		        },
+		
+		    Years = {Date.Year(StartDate)..Date.Year(EndDate)},
+		    HolidayList = List.Combine(List.Transform(Years, fnHolidaysOfYear)) & AdditionalNonWorkingDays,
+		    // If two holidays fall on the same day (e.g. 30 Jun 2025) keep only one
+		    HolidayTable = Table.Distinct(
+		        Table.FromRecords(HolidayList, type table [Date = date, NameES = text, NameEN = text]), {"Date"}),
+		
+		    Dates = List.Dates(StartDate, Duration.Days(EndDate - StartDate) + 1, #duration(1, 0, 0, 0)),
+		    Base = Table.FromList(Dates, Splitter.SplitByNothing(), type table [Date = date]),
+		    Joined = Table.NestedJoin(Base, {"Date"}, HolidayTable, {"Date"}, "H", JoinKind.LeftOuter),
+		    Expanded = Table.ExpandTableColumn(Joined, "H", {"NameES", "NameEN"}, {"HolidayNameES", "HolidayNameEN"}),
+		    Sorted = Table.Buffer(Table.Sort(Expanded, {{"Date", Order.Ascending}})),
+		
+		    WithWeekend = Table.AddColumn(Sorted, "IsWeekend", each Date.DayOfWeek([Date], Day.Monday) >= 5, type logical),
+		    WithHoliday = Table.AddColumn(WithWeekend, "IsHoliday", each [HolidayNameES] <> null, type logical),
+		    WithBusinessDay = Table.AddColumn(WithHoliday, "IsBusinessDay", each not [IsWeekend] and not [IsHoliday], type logical),
+		
+		    // BusinessIndex = number of business days from StartDate up to the date (inclusive).
+		    // Business days between A (excluded) and B (included) = BusinessIndex(B) - BusinessIndex(A).
+		    BusinessFlags = List.Buffer(WithBusinessDay[IsBusinessDay]),
+		    Running = List.Skip(List.Generate(
+		        () => [i = -1, s = 0],
+		        each [i] < List.Count(BusinessFlags),
+		        each [i = [i] + 1, s = [s] + (if BusinessFlags{[i] + 1} then 1 else 0)],
+		        each [s]), 1),
+		    WithIndex = Table.FromColumns(
+		        Table.ToColumns(WithBusinessDay) & {Running},
+		        type table [Date = date, HolidayNameES = nullable text, HolidayNameEN = nullable text, IsWeekend = logical,
+		                    IsHoliday = logical, IsBusinessDay = logical, BusinessIndex = Int64.Type])
+		in
+		    WithIndex
+	lineageTag: d4b0c5dd-fb38-589d-a3bd-2dfe8ce89e7b
+	queryGroup: '4. Support'
+
+	annotation PBI_ResultType = Table

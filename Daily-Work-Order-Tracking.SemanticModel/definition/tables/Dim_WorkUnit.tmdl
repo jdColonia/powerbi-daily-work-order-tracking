@@ -1,0 +1,53 @@
+table Dim_WorkUnit
+	lineageTag: a6528cd5-5fb7-530d-accb-ee01a69fd2f8
+
+	column WorkUnitKey
+		dataType: int64
+		formatString: 0
+		lineageTag: cb9a3871-12c9-5b25-841a-53be6336eedd
+		summarizeBy: none
+		sourceColumn: WorkUnitKey
+
+		annotation SummarizationSetBy = User
+
+	column 'Work Unit ES'
+		dataType: string
+		isHidden
+		lineageTag: 850b441d-2d01-56e8-be6e-ad898fdc4796
+		summarizeBy: none
+		sourceColumn: Work Unit ES
+
+		annotation SummarizationSetBy = User
+
+	column 'Work Unit EN'
+		dataType: string
+		isHidden
+		lineageTag: d8f38a9d-fa0b-5196-bcc6-5b3142de6e40
+		summarizeBy: none
+		sourceColumn: Work Unit EN
+
+		annotation SummarizationSetBy = User
+
+	partition Dim_WorkUnit = m
+		mode: import
+		source =
+				let
+				    Source = Table.SelectRows(OrdersStaging, each [Work Unit Code] <> null),
+				    Grouped = Table.Group(Source, {"Work Unit Code"}, {
+				        {"Source Name", each List.First(List.RemoveNulls([Work Unit Name]), null), type nullable text}}),
+				    Renamed = Table.RenameColumns(Grouped, {{"Work Unit Code", "WorkUnitKey"}}),
+				    NoUnit = #table(type table [WorkUnitKey = Int64.Type, #"Source Name" = text], {{-1, null}}),
+				    Combined = Table.Combine({Renamed, NoUnit}),
+				    WithNameES = Table.AddColumn(Combined, "Work Unit ES",
+				        each if [WorkUnitKey] = -1 then "Sin cuadrilla asignada"
+				             else if [Source Name] = null then "Cuadrilla " & Text.From([WorkUnitKey])
+				             else fnReadableName([Source Name]), type text),
+				    WithNameEN = Table.AddColumn(WithNameES, "Work Unit EN",
+				        each if [WorkUnitKey] = -1 then "No crew assigned"
+				             else if [Source Name] = null then "Crew " & Text.From([WorkUnitKey])
+				             else fnReadableName([Source Name]), type text),
+				    Final = Table.TransformColumnTypes(Table.RemoveColumns(WithNameEN, {"Source Name"}), {{"WorkUnitKey", Int64.Type}})
+				in
+				    Final
+
+	annotation PBI_ResultType = Table

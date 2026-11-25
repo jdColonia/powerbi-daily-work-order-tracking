@@ -1,0 +1,444 @@
+table _Measures
+	lineageTag: 8068af2d-93da-56b0-aa59-f1e4dc56b21e
+
+	column Column
+		dataType: string
+		isHidden
+		lineageTag: 55c87c52-40a9-5cad-932e-ab524a5b0798
+		summarizeBy: none
+		sourceColumn: Column
+
+		annotation SummarizationSetBy = User
+
+	/// Report language code (es / en), set by the report-level filter on the Language table.
+	measure Lang = SELECTEDVALUE ( 'Language'[Code], "es" )
+		isHidden
+		displayFolder: Common
+		lineageTag: b571d778-4bb5-5766-8848-c15e2bad8417
+
+	/// Open work orders in the current filter context.
+	measure 'Open Orders' =
+			// + 0: the cards show 0 instead of blank.
+			COUNTROWS ( Fact_Orders ) + 0
+		formatString: 0
+		displayFolder: Cards
+		lineageTag: 0310fd54-35d9-56e0-b518-2d5a07ade197
+
+	/// Open orders that still have more than one business day left.
+	measure 'Orders On Time' = CALCULATE ( [Open Orders], Dim_SlaStatus[GroupCode] = 1 )
+		formatString: 0
+		displayFolder: Cards
+		lineageTag: 6376e36b-2c78-554e-b9c4-eac082551629
+
+	/// Open orders with 0 or 1 business days left.
+	measure 'Orders Due Soon' = CALCULATE ( [Open Orders], Dim_SlaStatus[GroupCode] = 2 )
+		formatString: 0
+		displayFolder: Cards
+		lineageTag: d8fcd2f8-266b-5575-b62e-08ac88564240
+
+	/// Open orders past their response target, without site visits.
+	measure 'Orders Overdue' =
+			// Site visits to industry are not included.
+			CALCULATE ( [Open Orders], Dim_SlaStatus[GroupCode] = 3 )
+		formatString: 0
+		displayFolder: Cards
+		lineageTag: 9cc347d8-2fae-5d3c-8f0f-f3ee914dd309
+
+	/// Open orders whose work type has no response target (site visits are counted apart).
+	measure 'Orders No Target' = CALCULATE ( [Open Orders], Dim_SlaStatus[GroupCode] = 4 )
+		formatString: 0
+		displayFolder: Cards
+		lineageTag: 953261f8-37c5-4ff0-b3e1-0c7b7d7795a5
+
+	/// All open orders, ignoring the status selection.
+	measure 'All Orders' =
+			// Total regardless of the status group selected ("All" card on the detail page).
+			CALCULATE ( [Open Orders], REMOVEFILTERS ( Dim_SlaStatus ) )
+		formatString: 0
+		displayFolder: Cards
+		lineageTag: c20b025c-21c1-5b87-b7c8-1b75d9c3bdfd
+
+	/// Open orders that have a response target and a running clock.
+	measure 'Orders With Target' =
+			// Orders with a target and a running clock, without site visits.
+			CALCULATE ( [Open Orders], Dim_SlaStatus[GroupCode] IN { 1, 2, 3 } )
+		formatString: 0
+		displayFolder: Cards
+		lineageTag: 804c2308-0188-5659-bf16-1045428d677d
+
+	/// Share of orders with a target that have not exceeded it.
+	measure '% SLA Compliance' =
+			// Orders with a target that are not overdue / orders with a target (no site visits). Goal: 100 %.
+			DIVIDE ( [Orders With Target] - [Orders Overdue], [Orders With Target] )
+		formatString: 0%
+		displayFolder: Cards
+		lineageTag: 19990b2c-eb5b-5e87-9e94-4d6da5e4ea72
+
+	/// Text colour of the order's response status.
+	measure 'Status Text Color' =
+			// Conditional-format "Field value" for the font colour and the card stripe.
+			// Blank when there are no orders (see Order SLA Status).
+			IF (
+			    ISEMPTY ( Fact_Orders ),
+			    BLANK (),
+			    LOOKUPVALUE (
+			        Dim_SlaStatus[Text Color],
+			        Dim_SlaStatus[SlaStatusKey], SELECTEDVALUE ( Fact_Orders[SlaStatusKey] )
+			    )
+			)
+		displayFolder: Colors
+		lineageTag: 0e0d3473-a955-5112-9045-295f04f63af6
+
+	/// SVG bar with the share of the response target already used.
+	measure 'Consumption Bar' =
+			// Progress bar of the target used, coloured like the status (SVG image). It fills up to 100 %;
+			// the real value (e.g. 758 %) is in the neighbouring Target Consumption column, which also sorts the table.
+			VAR _c = SELECTEDVALUE ( Fact_Orders[Target Consumption] )
+			VAR _s = INT ( SELECTEDVALUE ( Fact_Orders[SlaStatusKey] ) / 10 )
+			VAR _color = SWITCH ( _s, 1, "1A7F4B", 2, "E3B341", 3, "C62828", "9A9DA3" )
+			VAR _width = ROUND ( MIN ( _c, 1 ) * 100, 0 )
+			RETURN
+			    // ISEMPTY: in combinations without orders, _c takes the value of the table's
+			    // Target Consumption column and the measure would not be blank.
+			    IF (
+			        ISEMPTY ( Fact_Orders ) || ISBLANK ( _c ),
+			        BLANK (),
+			        "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='24' viewBox='0 0 100 24'>"
+			            & "<rect x='0' y='7' width='100' height='10' rx='5' fill='%23E4E4E0'/>"
+			            & "<rect x='0' y='7' width='" & _width & "' height='10' rx='5' fill='%23" & _color & "'/></svg>"
+			    )
+		displayFolder: Detail
+		lineageTag: 337dd4ff-77c6-5abf-b006-ff22e6d47bff
+		dataCategory: ImageUrl
+
+	/// Status text for the tooltip card.
+	measure 'Tooltip Status' = [Order SLA Status]
+		displayFolder: Tooltip
+		lineageTag: 24539f3e-8186-5897-b5b4-4c4140baaf47
+
+	/// Request number and type for the tooltip card.
+	measure 'Tooltip Request' =
+			// The type and its separator are left out when the type is blank.
+			VAR _s = SELECTEDVALUE ( Fact_Orders[RequestKey] )
+			VAR _typeES = LOOKUPVALUE ( Dim_Request[Request Type ES], Dim_Request[RequestKey], _s )
+			VAR _typeEN = LOOKUPVALUE ( Dim_Request[Request Type EN], Dim_Request[RequestKey], _s )
+			VAR _none = ISBLANK ( _s ) || _s = -1
+			RETURN
+			    SWITCH (
+			        [Lang],
+			        "en", IF ( _none, "No request", "Request " & _s & IF ( ISBLANK ( _typeEN ), "", " · " & _typeEN ) ),
+			        IF ( _none, "Sin solicitud", "Solicitud " & _s & IF ( ISBLANK ( _typeES ), "", " · " & _typeES ) )
+			    )
+		displayFolder: Tooltip
+		lineageTag: cffb71ec-d5fd-569f-91c5-bf54436aca8c
+
+	/// Customer name for the tooltip card.
+	measure 'Tooltip Customer' =
+			// The data may not carry the customer: then it says "No customer" (never a literal null).
+			VAR _name =
+			    SWITCH (
+			        [Lang],
+			        "en", LOOKUPVALUE ( Dim_Customer[Customer Name EN], Dim_Customer[CustomerKey], SELECTEDVALUE ( Fact_Orders[CustomerKey] ) ),
+			        LOOKUPVALUE ( Dim_Customer[Customer Name ES], Dim_Customer[CustomerKey], SELECTEDVALUE ( Fact_Orders[CustomerKey] ) )
+			    )
+			RETURN
+			    IF ( ISBLANK ( _name ), SWITCH ( [Lang], "en", "No customer", "Sin cliente" ), _name )
+		displayFolder: Tooltip
+		lineageTag: fac6292c-3c7c-5d1d-8cd3-fd70b372bb4b
+
+	/// Location name for the tooltip card.
+	measure 'Tooltip Location' =
+			// "—" instead of a literal null.
+			COALESCE (
+			    SWITCH (
+			        [Lang],
+			        "en", LOOKUPVALUE ( Dim_Location[Location EN], Dim_Location[LocationKey], SELECTEDVALUE ( Fact_Orders[LocationKey] ) ),
+			        LOOKUPVALUE ( Dim_Location[Location ES], Dim_Location[LocationKey], SELECTEDVALUE ( Fact_Orders[LocationKey] ) )
+			    ),
+			    "—"
+			)
+		displayFolder: Tooltip
+		lineageTag: 3fa486f1-3aa9-5fa8-88e6-3946e7c0ffae
+
+	/// Field crew name for the tooltip card.
+	measure 'Tooltip Work Unit' =
+			// "—" instead of a literal null.
+			COALESCE (
+			    SWITCH (
+			        [Lang],
+			        "en", LOOKUPVALUE ( Dim_WorkUnit[Work Unit EN], Dim_WorkUnit[WorkUnitKey], SELECTEDVALUE ( Fact_Orders[WorkUnitKey] ) ),
+			        LOOKUPVALUE ( Dim_WorkUnit[Work Unit ES], Dim_WorkUnit[WorkUnitKey], SELECTEDVALUE ( Fact_Orders[WorkUnitKey] ) )
+			    ),
+			    "—"
+			)
+		displayFolder: Tooltip
+		lineageTag: 643a366f-6bba-5246-aaf1-9761468455fe
+
+	/// Text with the business days used out of the target, for the tooltip card.
+	measure 'Tooltip Consumption' =
+			VAR _target = SELECTEDVALUE ( Fact_Orders[Target Business Days] )
+			VAR _d = SELECTEDVALUE ( Fact_Orders[Business Days Used] )
+			RETURN
+			    SWITCH (
+			        TRUE (),
+			        ISBLANK ( _d ), SWITCH ( [Lang], "en", "Unassigned: the target has not started yet", "Sin asignar: el plazo aún no empieza" ),
+			        ISBLANK ( _target ), SWITCH ( [Lang], "en", "This work type has no response target", "Este tipo de trabajo no tiene plazo de atención" ),
+			        SWITCH ( [Lang], "en", _d & " of " & _target & " business days", _d & " de " & _target & " días hábiles" )
+			    )
+		displayFolder: Tooltip
+		lineageTag: e155075e-3967-5222-acc1-dff4e430e678
+
+	/// Time left or overdue, for the tooltip card.
+	measure 'Tooltip Remaining' =
+			VAR _r = SELECTEDVALUE ( Fact_Orders[Days Remaining] )
+			RETURN
+			    SWITCH (
+			        TRUE (),
+			        ISBLANK ( _r ), BLANK (),
+			        _r < -1, SWITCH ( [Lang], "en", "Overdue by " & -_r & " business days", "Vencida hace " & -_r & " días hábiles" ),
+			        _r = -1, SWITCH ( [Lang], "en", "Overdue by 1 business day", "Vencida hace 1 día hábil" ),
+			        _r = 0, SWITCH ( [Lang], "en", "Due today", "Vence hoy" ),
+			        _r = 1, SWITCH ( [Lang], "en", "1 business day left", "Queda 1 día hábil" ),
+			        SWITCH ( [Lang], "en", _r & " business days left", "Quedan " & _r & " días hábiles" )
+			    )
+		displayFolder: Tooltip
+		lineageTag: d856d241-5ab3-59c9-8a3c-53e451ef6abf
+
+	/// Open site visits to industry (tracked apart from the response target cards).
+	measure 'Open Site Visits' = CALCULATE ( [Open Orders], Dim_SlaStatus[GroupCode] = 5 )
+		formatString: 0
+		displayFolder: Cards
+		lineageTag: 44a15edb-7bde-5d36-aaa4-9c0a00a15611
+
+	/// Open orders for the "target used" card (industry visits are counted apart, like in the status cards).
+	measure 'Consumption Orders' = CALCULATE ( [Open Orders], Dim_SlaStatus[GroupCode] <> 5 )
+		formatString: 0
+		displayFolder: Charts
+		lineageTag: 5d0c9a54-3e0b-4c9f-9a4e-7d7e1c2b6a11
+
+	/// Open site visits already past their target.
+	measure 'Overdue Site Visits' = CALCULATE ( [Open Orders], Dim_SlaStatus[GroupCode] = 5, Dim_SlaStatus[TrafficLightCode] IN { 3 } )
+		formatString: 0
+		displayFolder: Cards
+		lineageTag: b57dba0c-9d15-5eaf-a038-cc65a3ea61e2
+
+	/// SVG colour dot of the work type.
+	measure 'Work Type Dot' =
+			// Colour dot of the work type (first column of the donut table).
+			VAR _c = SUBSTITUTE ( SELECTEDVALUE ( Dim_WorkType[Color] ), "#", "%23" )
+			RETURN
+			    IF (
+			        NOT ISBLANK ( _c ),
+			        "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'>"
+			            & "<rect x='1' y='1' width='12' height='12' rx='3' fill='" & _c & "'/></svg>"
+			    )
+		displayFolder: Charts
+		lineageTag: 8abe61f6-fa06-5f82-8876-63a9cca6f435
+		dataCategory: ImageUrl
+
+	/// Order count for charts (blank instead of 0).
+	measure 'Chart Orders' =
+			// Same as [Open Orders] but blank when there are no orders, so charts
+			// do not show empty categories.
+			COUNTROWS ( Fact_Orders )
+		formatString: 0
+		displayFolder: Charts
+		lineageTag: fd3ce716-e8f2-5550-beb8-d94a0e3128f5
+
+	/// Open orders that are not assigned yet.
+	measure 'Unassigned Orders' =
+			// Orders without an assignment date: the response clock has not started.
+			CALCULATE ( [Open Orders], Dim_SlaStatus[GroupCode] = 0 )
+		formatString: 0
+		displayFolder: Cards
+		lineageTag: 05482d1e-95cf-56c8-9f1f-a5b44ab1dc20
+
+	/// Header subtitle with the data date.
+	measure 'Header Subtitle' =
+			SWITCH (
+			    [Lang],
+			    "en", "Open work orders and their response target · " & SELECTEDVALUE ( Info_Refresh[Snapshot Text EN] ),
+			    "Órdenes abiertas y su plazo de atención · " & SELECTEDVALUE ( Info_Refresh[Snapshot Text ES] )
+			)
+		displayFolder: Texts
+		lineageTag: 14d361f1-ac39-597d-b2d4-1f3a2b9b406c
+
+	/// Title of the detail table with the order count.
+	measure 'Detail Title' =
+			SWITCH (
+			    [Lang],
+			    "en", "Open work order detail (" & FORMAT ( [Open Orders], "0" ) & ")",
+			    "Detalle de órdenes abiertas (" & FORMAT ( [Open Orders], "0" ) & ")"
+			)
+		displayFolder: Texts
+		lineageTag: 4e59c3c7-5412-5ee2-8b77-847954d6faa8
+
+	/// Status text of the order with a colour dot.
+	measure 'Order SLA Status' =
+			// Text with a colour dot for the Status column of the table.
+			// ISEMPTY first: the detail table crosses several dimensions (customer, type,
+			// location...) and a measure that is not blank in combinations without orders
+			// makes Power BI evaluate them all (the table would not load).
+			IF (
+			    ISEMPTY ( Fact_Orders ),
+			    BLANK (),
+			    "● "
+			        & SWITCH (
+			            [Lang],
+			            "en", LOOKUPVALUE ( Dim_SlaStatus[Status EN], Dim_SlaStatus[SlaStatusKey], SELECTEDVALUE ( Fact_Orders[SlaStatusKey] ) ),
+			            LOOKUPVALUE ( Dim_SlaStatus[Status ES], Dim_SlaStatus[SlaStatusKey], SELECTEDVALUE ( Fact_Orders[SlaStatusKey] ) )
+			        )
+			)
+		displayFolder: Detail
+		lineageTag: 328124b9-3663-538e-9298-d2957d3cc0ba
+
+	/// Red font when the order is overdue.
+	measure 'Days Remaining Color' =
+			// Blank when there are no orders (see Order SLA Status).
+			IF (
+			    ISEMPTY ( Fact_Orders ),
+			    BLANK (),
+			    IF ( SELECTEDVALUE ( Fact_Orders[Days Remaining] ) < 0, "#C62828", "#0E1014" )
+			)
+		displayFolder: Colors
+		lineageTag: bdc0e3ae-14b7-57f8-baaa-74e06b8c2d44
+
+	/// Tooltip card title.
+	measure 'Tooltip Title' = SWITCH ( [Lang], "en", "Order ", "Orden " ) & SELECTEDVALUE ( Fact_Orders[Order Number] )
+		displayFolder: Tooltip
+		lineageTag: 183eb156-1c37-5c07-8433-533067c4a701
+
+	/// Creation date for the tooltip card.
+	measure 'Tooltip Created' =
+			// Short date in the report language (dd/MM/yyyy in Spanish, M/d/yyyy in English).
+			VAR _f = SELECTEDVALUE ( Fact_Orders[Created Date] )
+			RETURN IF ( ISBLANK ( _f ), "—", SWITCH ( [Lang], "en", FORMAT ( _f, "M/d/yyyy", "en-US" ), FORMAT ( _f, "dd/MM/yyyy", "es-CO" ) ) )
+		displayFolder: Tooltip
+		lineageTag: df7b68cf-d841-5c66-a6b5-b6328296e0fa
+
+	/// Assignment date for the tooltip card.
+	measure 'Tooltip Assigned' =
+			VAR _f = SELECTEDVALUE ( Fact_Orders[Assignment Date] )
+			RETURN IF ( ISBLANK ( _f ), SWITCH ( [Lang], "en", "Unassigned", "Sin asignar" ), SWITCH ( [Lang], "en", FORMAT ( _f, "M/d/yyyy", "en-US" ), FORMAT ( _f, "dd/MM/yyyy", "es-CO" ) ) )
+		displayFolder: Tooltip
+		lineageTag: aa9a1afb-ff58-5dde-8234-17963d6c8d5d
+
+	/// Due date for the tooltip card.
+	measure 'Tooltip Due' =
+			VAR _f = SELECTEDVALUE ( Fact_Orders[Due Date] )
+			RETURN IF ( ISBLANK ( _f ), "—", SWITCH ( [Lang], "en", FORMAT ( _f, "M/d/yyyy", "en-US" ), FORMAT ( _f, "dd/MM/yyyy", "es-CO" ) ) )
+		displayFolder: Tooltip
+		lineageTag: b0c13114-750c-539a-9447-efc65034ae95
+
+	/// Brand colour of the status for the tooltip card.
+	measure 'Status Bar Color' =
+			// Brand colour of the status (yellow for Due soon): stripe and bar
+			// of the tooltip card.
+			LOOKUPVALUE (
+			    Dim_SlaStatus[Color],
+			    Dim_SlaStatus[SlaStatusKey], SELECTEDVALUE ( Fact_Orders[SlaStatusKey] )
+			)
+		displayFolder: Colors
+		lineageTag: 150ce3c0-2cc9-5912-b25a-220ac0d178c6
+
+	/// Light background colour of the status label.
+	measure 'Status Background Color' =
+			// Light background of the status label in the tooltip card.
+			LOOKUPVALUE (
+			    Dim_SlaStatus[Background Color],
+			    Dim_SlaStatus[SlaStatusKey], SELECTEDVALUE ( Fact_Orders[SlaStatusKey] )
+			)
+		displayFolder: Colors
+		lineageTag: ac285306-33c0-5a28-91fb-d06179bb5b62
+
+	/// Target consumption value for the Deneb bar.
+	measure 'Tooltip Consumption Value' =
+			// Share of the target used by the order (for the bar of the Deneb tooltip card).
+			SELECTEDVALUE ( Fact_Orders[Target Consumption] )
+		formatString: 0%
+		displayFolder: Tooltip
+		lineageTag: 6b42cba1-103d-574f-8b35-92405c2915ff
+
+	/// Request observation (wrapped lines) for the tooltip card.
+	measure 'Tooltip Observation' =
+			// Request observation already split into lines (Dim_Request[Request Observation Lines]).
+			VAR _s = SELECTEDVALUE ( Fact_Orders[RequestKey] )
+			VAR _o =
+			    SWITCH (
+			        [Lang],
+			        "en", LOOKUPVALUE ( Dim_Request[Request Observation Lines EN], Dim_Request[RequestKey], _s ),
+			        LOOKUPVALUE ( Dim_Request[Request Observation Lines ES], Dim_Request[RequestKey], _s )
+			    )
+			RETURN
+			    IF ( ISBLANK ( _o ), SWITCH ( [Lang], "en", "No observation recorded", "Sin observación registrada" ), _o )
+		displayFolder: Tooltip
+		lineageTag: aeb7c2d5-2979-5eb3-8b69-5843835d7047
+
+	/// Order comment (wrapped lines) for the tooltip card.
+	measure 'Tooltip Comment' =
+			// Order comment already split into lines (Fact_Orders[Comment Lines ES / EN]).
+			VAR _c =
+			    SWITCH (
+			        [Lang],
+			        "en", SELECTEDVALUE ( Fact_Orders[Comment Lines EN] ),
+			        SELECTEDVALUE ( Fact_Orders[Comment Lines ES] )
+			    )
+			RETURN
+			    IF ( ISBLANK ( _c ), SWITCH ( [Lang], "en", "No comment recorded", "Sin comentario registrado" ), _c )
+		displayFolder: Tooltip
+		lineageTag: de4d5daa-8749-55be-a543-133e71c863e2
+
+	/// Share of orders per work type.
+	measure '% Work Type' =
+			// Share of each work type (table next to the donut).
+			DIVIDE ( [Chart Orders], CALCULATE ( [Chart Orders], ALLSELECTED ( Dim_WorkType ) ) )
+		formatString: 0%
+		displayFolder: Charts
+		lineageTag: 244fd796-6feb-5b95-82b7-ea2e7c3bf107
+
+	/// Colour of the work type.
+	measure 'Work Type Color' =
+			// Colour of each donut slice (conditional format).
+			SELECTEDVALUE ( Dim_WorkType[Color] )
+		displayFolder: Colors
+		lineageTag: c139a71c-9f1e-5b22-a460-40e84ca7933a
+
+	/// Work type name for the tooltip card.
+	measure 'Tooltip Work Type' =
+			// "—" instead of a literal null.
+			COALESCE (
+			    SWITCH (
+			        [Lang],
+			        "en", LOOKUPVALUE ( Dim_WorkType[Work Type EN], Dim_WorkType[WorkTypeKey], SELECTEDVALUE ( Fact_Orders[WorkTypeKey] ) ),
+			        LOOKUPVALUE ( Dim_WorkType[Work Type ES], Dim_WorkType[WorkTypeKey], SELECTEDVALUE ( Fact_Orders[WorkTypeKey] ) )
+			    ),
+			    "—"
+			)
+		displayFolder: Tooltip
+		lineageTag: 454f56d6-d95a-55cf-a17c-d9d8fc255fe3
+
+	/// Work type name split in two lines.
+	measure 'Tooltip Work Type Lines' =
+			// The work type split in two lines (break at the last space before
+			// character 34) so it reads in full on the tooltip card.
+			VAR _t = [Tooltip Work Type]
+			VAR _max = 34
+			RETURN
+			    IF (
+			        LEN ( _t ) <= _max,
+			        _t,
+			        VAR _pos = MAXX ( FILTER ( GENERATESERIES ( 1, _max ), MID ( _t, [Value], 1 ) = " " ), [Value] )
+			        RETURN IF ( ISBLANK ( _pos ), _t, LEFT ( _t, _pos - 1 ) & UNICHAR ( 10 ) & MID ( _t, _pos + 1, 200 ) )
+			    )
+		displayFolder: Tooltip
+		lineageTag: 97b70342-bc58-5e02-963f-2b258d456450
+
+	partition _Measures = m
+		mode: import
+		source =
+				let
+				    Source = #table(type table [Column = text], {})
+				in
+				    Source
+
+	annotation PBI_ResultType = Table

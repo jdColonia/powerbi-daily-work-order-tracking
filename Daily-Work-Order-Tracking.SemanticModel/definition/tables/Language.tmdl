@@ -1,0 +1,23 @@
+/// Language switch: the report-level filter on Code (es / en) drives the [Lang] measure.
+table Language
+	isHidden
+	lineageTag: bf544496-424b-5fe5-bf92-f0725750d5d4
+
+	column Code
+		dataType: string
+		isHidden
+		lineageTag: ebbc7d25-c85d-5471-bb30-56f1bb4ffff4
+		summarizeBy: none
+		sourceColumn: Code
+
+		annotation SummarizationSetBy = User
+
+	partition Language = m
+		mode: import
+		source =
+				let
+				    Source = #table(type table [Code = text], {{"es"}, {"en"}})
+				in
+				    Source
+
+	annotation PBI_ResultType = Table

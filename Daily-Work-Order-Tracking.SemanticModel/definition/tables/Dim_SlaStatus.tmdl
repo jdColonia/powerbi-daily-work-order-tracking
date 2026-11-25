@@ -1,0 +1,146 @@
+table Dim_SlaStatus
+	lineageTag: 99a3d22a-3fcf-5c13-bb44-0c0baabd2144
+
+	column SlaStatusKey
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: ffbe0aef-c506-5c8e-82aa-1ab9d1ebead1
+		summarizeBy: none
+		sourceColumn: SlaStatusKey
+
+		annotation SummarizationSetBy = User
+
+	/// 0 unassigned, 1 on time, 2 due soon, 3 overdue, 4 no target.
+	column TrafficLightCode
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: c7a21f27-5c41-523f-8554-ba1ba446af9b
+		summarizeBy: none
+		sourceColumn: TrafficLightCode
+
+		annotation SummarizationSetBy = User
+
+	column 'Status ES'
+		dataType: string
+		lineageTag: 4cc00062-7bb7-5691-828c-2b6bfaf50382
+		summarizeBy: none
+		sourceColumn: Status ES
+		sortByColumn: 'Status Order'
+
+		annotation SummarizationSetBy = User
+
+	column 'Status EN'
+		dataType: string
+		lineageTag: 0d5842c1-9d67-5b43-acbd-945169308740
+		summarizeBy: none
+		sourceColumn: Status EN
+		sortByColumn: 'Status Order'
+
+		annotation SummarizationSetBy = User
+
+	column 'Status Order'
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: f887d2cf-2daa-5b72-a990-d34dd2a67749
+		summarizeBy: none
+		sourceColumn: Status Order
+
+		annotation SummarizationSetBy = User
+
+	/// Card group: 0 unassigned, 1 on time, 2 due soon, 3 overdue, 4 no target, 5 site visits.
+	column GroupCode
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: e0229ab9-7633-50eb-8cd7-06a2dd4838d9
+		summarizeBy: none
+		sourceColumn: GroupCode
+
+		annotation SummarizationSetBy = User
+
+	column 'Card Group ES'
+		dataType: string
+		lineageTag: e5a28966-403f-5470-a513-c80a876ecaa9
+		summarizeBy: none
+		sourceColumn: Card Group ES
+		sortByColumn: 'Group Order'
+
+		annotation SummarizationSetBy = User
+
+	column 'Card Group EN'
+		dataType: string
+		lineageTag: dd94c2d3-283b-502b-a456-3c03241a7eba
+		summarizeBy: none
+		sourceColumn: Card Group EN
+		sortByColumn: 'Group Order'
+
+		annotation SummarizationSetBy = User
+
+	column 'Group Order'
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: abc75a4c-d5a0-51c8-90a0-5b8c7fabb359
+		summarizeBy: none
+		sourceColumn: Group Order
+
+		annotation SummarizationSetBy = User
+
+	column Color
+		dataType: string
+		isHidden
+		lineageTag: e2e7c035-2898-528b-8f19-3436293c7837
+		summarizeBy: none
+		sourceColumn: Color
+
+		annotation SummarizationSetBy = User
+
+	column 'Text Color'
+		dataType: string
+		isHidden
+		lineageTag: fe9d8195-dee2-5e9e-91f1-5f0a68ae3d23
+		summarizeBy: none
+		sourceColumn: Text Color
+
+		annotation SummarizationSetBy = User
+
+	column 'Background Color'
+		dataType: string
+		isHidden
+		lineageTag: a7e2d6e1-89ff-5fe2-a100-ae871c3b7cfc
+		summarizeBy: none
+		sourceColumn: Background Color
+
+		annotation SummarizationSetBy = User
+
+	partition Dim_SlaStatus = m
+		mode: import
+		source =
+				let
+				    TrafficLight = #table(
+				        type table [TrafficLightCode = Int64.Type, #"Status ES" = text, #"Status EN" = text, #"Status Order" = Int64.Type,
+				                    GroupCode = Int64.Type, #"Card Group ES" = text, #"Card Group EN" = text, #"Group Order" = Int64.Type,
+				                    Color = text, #"Text Color" = text, #"Background Color" = text],
+				        {
+				            {3, "Vencida",     "Overdue",    1, 3, "Vencidas",                          "Overdue", 1, "#C62828", "#C62828", "#FDE3DE"},
+				            {2, "Por vencer",  "Due soon",   2, 2, "Por vencer",  "Due soon",   2, "#E3B341", "#B07F0C", "#FBF1D9"},
+				            {1, "En tiempo",   "On time",    3, 1, "En tiempo",   "On time",    3, "#1A7F4B", "#1A7F4B", "#E4E4E0"},
+				            {4, "Sin plazo",   "No target",  4, 4, "Sin plazo",   "No target",  4, "#9A9DA3", "#5F636A", "#F6F6F4"},
+				            {0, "Sin asignar", "Unassigned", 5, 0, "Sin asignar", "Unassigned", 6, "#5F636A", "#5F636A", "#F6F6F4"}
+				        }),
+				    NotVisit = Table.AddColumn(TrafficLight, "Is Site Visit", each false, type logical),
+				    Visit = Table.TransformColumns(
+				        Table.AddColumn(TrafficLight, "Is Site Visit", each true, type logical),
+				        {{"GroupCode", each 5, Int64.Type}, {"Card Group ES", each "Visitas a industria", type text},
+				         {"Card Group EN", each "Industry visits", type text}, {"Group Order", each 5, Int64.Type}}),
+				    All = Table.Combine({NotVisit, Visit}),
+				    WithKey = Table.AddColumn(All, "SlaStatusKey",
+				        each [TrafficLightCode] * 10 + (if [Is Site Visit] then 1 else 0), Int64.Type),
+				    Final = Table.RemoveColumns(WithKey, {"Is Site Visit"})
+				in
+				    Final
+
+	annotation PBI_ResultType = Table

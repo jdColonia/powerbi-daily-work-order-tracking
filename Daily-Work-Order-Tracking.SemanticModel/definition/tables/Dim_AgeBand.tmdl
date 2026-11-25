@@ -1,0 +1,70 @@
+table Dim_AgeBand
+	lineageTag: e37a2a23-736d-5293-9738-7b455aa283d5
+
+	column AgeBandKey
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: b4b4901a-959f-57d1-b889-88b88854091e
+		summarizeBy: none
+		sourceColumn: AgeBandKey
+
+		annotation SummarizationSetBy = User
+
+	column 'Age Band ES'
+		dataType: string
+		lineageTag: f2db1420-36d8-5180-8569-1c4c966f1340
+		summarizeBy: none
+		sourceColumn: Age Band ES
+		sortByColumn: AgeBandKey
+
+		annotation SummarizationSetBy = User
+
+	column 'Age Band EN'
+		dataType: string
+		lineageTag: 1d189901-d2ab-5744-b9f6-cdda46605440
+		summarizeBy: none
+		sourceColumn: Age Band EN
+		sortByColumn: AgeBandKey
+
+		annotation SummarizationSetBy = User
+
+	column 'From Days'
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 68f6fe88-79ea-5d33-a523-12e571596321
+		summarizeBy: none
+		sourceColumn: From Days
+
+		annotation SummarizationSetBy = User
+
+	column 'To Days'
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 0fa5423e-23a9-5f40-afcb-2f025af0f25f
+		summarizeBy: none
+		sourceColumn: To Days
+
+		annotation SummarizationSetBy = User
+
+	partition Dim_AgeBand = m
+		mode: import
+		source =
+				let
+				    Bands = #table(
+				        type table [AgeBandKey = Int64.Type, #"Age Band ES" = text, #"Age Band EN" = text,
+				                    #"From Days" = Int64.Type, #"To Days" = Int64.Type],
+				        {
+				            {1, "0–2",         "0–2",        0,    2},
+				            {2, "3–5",         "3–5",        3,    5},
+				            {3, "6–10",        "6–10",       6,    10},
+				            {4, "11–20",       "11–20",      11,   20},
+				            {5, "Más de 20",   "Over 20",    21,   null},
+				            {6, "Sin asignar", "Unassigned", null, null}
+				        })
+				in
+				    Bands
+
+	annotation PBI_ResultType = Table

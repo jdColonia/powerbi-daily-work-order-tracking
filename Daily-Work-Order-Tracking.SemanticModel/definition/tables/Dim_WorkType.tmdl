@@ -1,0 +1,85 @@
+table Dim_WorkType
+	lineageTag: 47f4782c-d9e7-5b2c-8393-f2023d5365c8
+
+	column WorkTypeKey
+		dataType: string
+		lineageTag: 5bbbc921-e1ff-5381-9569-76d4f0b6d4c4
+		summarizeBy: none
+		sourceColumn: WorkTypeKey
+
+		annotation SummarizationSetBy = User
+
+	column 'Work Type ES'
+		dataType: string
+		lineageTag: 73508c5d-19ea-5059-b452-dc8f5800149a
+		summarizeBy: none
+		sourceColumn: Work Type ES
+
+		annotation SummarizationSetBy = User
+
+	column 'Work Type EN'
+		dataType: string
+		lineageTag: 9e61db61-a758-5c3b-9f8f-471aa7c63e9d
+		summarizeBy: none
+		sourceColumn: Work Type EN
+
+		annotation SummarizationSetBy = User
+
+	column 'Target Business Days'
+		dataType: int64
+		formatString: 0
+		lineageTag: 7037946b-6181-5c16-a18c-61fecd81a51a
+		summarizeBy: none
+		sourceColumn: Target Business Days
+
+		annotation SummarizationSetBy = User
+
+	column 'Is Site Visit'
+		dataType: boolean
+		lineageTag: 74952d0f-1231-5d0d-9af3-7c5df38ae231
+		summarizeBy: none
+		sourceColumn: Is Site Visit
+
+		annotation SummarizationSetBy = User
+
+	column Color
+		dataType: string
+		isHidden
+		lineageTag: 1b0638f1-f2af-5d90-8a55-db0fffccd8e8
+		summarizeBy: none
+		sourceColumn: Color
+
+		annotation SummarizationSetBy = User
+
+	partition Dim_WorkType = m
+		mode: import
+		source =
+				let
+				    Palette = {"#E5402B", "#2368B5", "#B07F0C", "#7B48A8", "#13896A", "#A0561F", "#2B2F36",
+				               "#9A9DA3", "#FF8A6B", "#7FA6D6", "#D9B25A", "#B4BCC4", "#163F73"},
+				
+				    Source = Table.SelectRows(OrdersStaging, each [Order Type] <> null),
+				    // One row per code with its number of orders
+				    Grouped = Table.Group(Source, {"Order Type"}, {{"_Orders", each Table.RowCount(_), Int64.Type}}),
+				    Renamed = Table.RenameColumns(Grouped, {{"Order Type", "WorkTypeKey"}}),
+				    Catalog = Table.Buffer(WorkTypeConfig),
+				    WithCatalog = Table.ExpandTableColumn(
+				        Table.NestedJoin(Renamed, {"WorkTypeKey"}, Catalog, {"WorkTypeKey"}, "C", JoinKind.LeftOuter),
+				        "C", {"Work Type ES", "Work Type EN", "Target Business Days", "Is Site Visit"},
+				        {"_NameES", "_NameEN", "Target Business Days", "_Visit"}),
+				    WithNameES = Table.AddColumn(WithCatalog, "Work Type ES",
+				        each if [_NameES] <> null then [_NameES]
+				             else "Tipo sin catálogo (" & [WorkTypeKey] & ")", type text),
+				    WithNameEN = Table.AddColumn(WithNameES, "Work Type EN",
+				        each if [_NameEN] <> null then [_NameEN] else "Type not in catalog (" & [WorkTypeKey] & ")", type text),
+				    WithVisit = Table.AddColumn(WithNameEN, "Is Site Visit", each [_Visit] = true, type logical),
+				    Sorted = Table.Sort(WithVisit, {{"_Orders", Order.Descending}, {"WorkTypeKey", Order.Ascending}}),
+				    WithOrder = Table.AddIndexColumn(Sorted, "Sort Order", 1, 1, Int64.Type),
+				    WithColor = Table.AddColumn(WithOrder, "Color", each Palette{Number.Mod([Sort Order] - 1, List.Count(Palette))}, type text),
+				    Final = Table.TransformColumnTypes(
+				        Table.RemoveColumns(WithColor, {"_Orders", "_NameES", "_NameEN", "_Visit", "Sort Order"}),
+				        {{"WorkTypeKey", type text}, {"Target Business Days", Int64.Type}})
+				in
+				    Final
+
+	annotation PBI_ResultType = Table

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "Daily-Work-Order-Tracking"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "bbb6a0a1-1a87-4395-a4a1-83277113b8fd"
+  }
+}

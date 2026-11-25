@@ -1,0 +1,32 @@
+table Info_Refresh
+	lineageTag: c3a4aeaf-5641-55df-ba2e-c86735157347
+
+	column 'Snapshot Text ES'
+		dataType: string
+		lineageTag: d9ab6c07-34e3-55ac-8ab4-51288766f375
+		summarizeBy: none
+		sourceColumn: Snapshot Text ES
+
+		annotation SummarizationSetBy = User
+
+	column 'Snapshot Text EN'
+		dataType: string
+		lineageTag: 3ee1baf2-b8bf-5efa-ae84-931452fd2fa3
+		summarizeBy: none
+		sourceColumn: Snapshot Text EN
+
+		annotation SummarizationSetBy = User
+
+	partition Info_Refresh = m
+		mode: import
+		source =
+				let
+				    Cutoff = SnapshotDate,
+				    TextES = "datos ficticios al " & Date.ToText(Cutoff, [Format = "dd/MM/yyyy", Culture = "es-CO"]),
+				    TextEN = "synthetic data as of " & Date.ToText(Cutoff, [Format = "MMM d, yyyy", Culture = "en-US"]),
+				    Result = #table(type table [#"Snapshot Text ES" = text, #"Snapshot Text EN" = text],
+				        {{TextES, TextEN}})
+				in
+				    Result
+
+	annotation PBI_ResultType = Table
